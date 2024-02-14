@@ -47,32 +47,44 @@
 endmodule
 */
 
-
-module rca (
-    input logic [31:0] a, b,  // Two 32-bit inputs
-    input logic ci,           // Carry input (usually set to 0 for addition)
-    output logic [31:0] sum,  // 32-bit sum of a and b
-    output logic co           // Carry output of the final addition
+module rca(
+    input  logic [31:0] a,
+    input  logic [31:0] b,
+    input  logic ci,                 // Carry in for the least significant bit
+    output logic co,                 // Carry out from the most significant bit
+    output logic [31:0] sum
 );
+    logic [30:0] carry; // Internal carry signals for full adders 1 through 30
 
-// Internal signals for carry bits between adders
-logic [30:0] carry;
+    // Manually instantiate the first full adder
+    full_adder fa_first(
+        .a(a[0]),
+        .b(b[0]),
+        .ci(ci),
+        .co(carry[0]),
+        .s(sum[0])
+    );
 
-// Instantiate 32 full adders
-genvar i;
+    // Instantiate full adders 1 through 30
+    genvar i;
     generate
-        for (i = 0; i < 32; i = i + 1) begin : adder
-            if (i == 0) begin
-                // For the least significant bit, use ci as the carry input
-                full_adder fa(.a(a[i]), .b(b[i]), .ci(ci), .co(carry[i]), .sum(sum[i]));
-            end else if (i < 31) begin
-                // For bits 1 through 30, use the carry from the previous adder
-                full_adder fa(.a(a[i]), .b(b[i]), .ci(carry[i-1]), .co(carry[i]), .sum(sum[i]));
-            end else begin
-                // For the most significant bit, output the carry out to co
-                full_adder fa(.a(a[i]), .b(b[i]), .ci(carry[i-1]), .co(co), .sum(sum[i]));
-            end
+        for (i = 1; i < 31; i = i + 1) begin : adders
+            full_adder fa(
+                .a(a[i]),
+                .b(b[i]),
+                .ci(carry[i-1]),
+                .co(carry[i]),
+                .s(sum[i])
+            );
         end
     endgenerate
 
+    // Manually instantiate the last full adder
+    full_adder fa_last(
+        .a(a[31]),
+        .b(b[31]),
+        .ci(carry[30]),
+        .co(co),
+        .s(sum[31])
+    );
 endmodule
